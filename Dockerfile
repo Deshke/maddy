@@ -17,8 +17,8 @@ RUN mkdir -p /pkg/data && \
 
 FROM alpine:3.22
 LABEL maintainer="@deshke"
-LABEL org.opencontainers.image.source=https://github.com/foxcpp/maddy
-LABEL org.opencontainers.image.fork=https://github.com/Deshke/maddy
+LABEL org.opencontainers.image.fork=https://github.com/foxcpp/maddy
+LABEL org.opencontainers.image.source=https://github.com/Deshke/maddy
 
 RUN set -ex && \
     apk upgrade --no-cache --available && \
