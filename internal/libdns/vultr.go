@@ -6,7 +6,7 @@ package libdns
 import (
 	"github.com/foxcpp/maddy/framework/config"
 	"github.com/foxcpp/maddy/framework/module"
-	"github.com/libdns/vultr"
+	"github.com/libdns/vultr/v2"
 )
 
 func init() {
