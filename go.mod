@@ -37,7 +37,7 @@ require (
 	github.com/libdns/gandi v1.2.1
 	github.com/libdns/gcore v0.0.0-20250427050847-9964da923833
 	github.com/libdns/googleclouddns v1.2.0
-	github.com/libdns/hetzner v1.0.0
+	github.com/libdns/hetzner/v2 v2.0.1
 	github.com/libdns/leaseweb v0.4.0
 	github.com/libdns/libdns v1.1.1
 	github.com/libdns/metaname v0.4.1
@@ -103,6 +103,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.27.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
+	github.com/hetznercloud/hcloud-go/v2 v2.27.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.2 // indirect

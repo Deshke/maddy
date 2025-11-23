@@ -1,0 +1,148 @@
+// This is the v2 transport protocol for NetAuth.  It encompases the
+// lessons learned from v1, mainly that naming functions matters, and
+// its very important to maintain conventions throughout an interface.
+syntax = "proto2";
+option go_package = "github.com/netauth/protocol/v2";
+import "netauth.proto";
+package netauth.v2;
+
+service NetAuth2 {
+  rpc EntityCreate(EntityRequest) returns (Empty) {}
+  rpc EntityUpdate(EntityRequest) returns (Empty) {}
+  rpc EntityInfo(EntityRequest) returns (ListOfEntities) {}
+  rpc EntitySearch(SearchRequest) returns (ListOfEntities) {}
+  rpc EntityUM(KVRequest) returns (ListOfStrings) {}
+  rpc EntityKVAdd(KV2Request) returns (Empty) {}
+  rpc EntityKVGet(KV2Request) returns (ListOfKVData) {}
+  rpc EntityKVDel(KV2Request) returns (Empty) {}
+  rpc EntityKVReplace(KV2Request) returns (Empty) {}
+  rpc EntityKeys(KVRequest) returns (ListOfStrings) {}
+  rpc EntityDestroy(EntityRequest) returns (Empty) {}
+  rpc EntityLock(EntityRequest) returns (Empty) {}
+  rpc EntityUnlock(EntityRequest) returns (Empty) {}
+  rpc EntityGroups(EntityRequest) returns (ListOfGroups) {}
+
+  rpc AuthEntity(AuthRequest) returns (Empty) {}
+  rpc AuthGetToken(AuthRequest) returns (AuthResult) {}
+  rpc AuthValidateToken(AuthRequest) returns (Empty) {}
+  rpc AuthChangeSecret(AuthRequest) returns (Empty) {}
+
+  rpc GroupCreate(GroupRequest) returns (Empty) {}
+  rpc GroupUpdate(GroupRequest) returns (Empty) {}
+  rpc GroupInfo(GroupRequest) returns (ListOfGroups) {}
+  rpc GroupUM(KVRequest) returns (ListOfStrings) {}
+  rpc GroupKVAdd(KV2Request) returns (Empty) {}
+  rpc GroupKVGet(KV2Request) returns (ListOfKVData) {}
+  rpc GroupKVDel(KV2Request) returns (Empty) {}
+  rpc GroupKVReplace(KV2Request) returns (Empty) {}
+  rpc GroupUpdateRules(GroupRulesRequest) returns (Empty) {}
+  rpc GroupAddMember(EntityRequest) returns (Empty) {}
+  rpc GroupDelMember(EntityRequest) returns (Empty) {}
+  rpc GroupDestroy(GroupRequest) returns (Empty) {}
+  rpc GroupMembers(GroupRequest) returns (ListOfEntities) {}
+  rpc GroupSearch(SearchRequest) returns (ListOfGroups) {}
+
+  rpc SystemCapabilities(CapabilityRequest) returns (Empty) {}
+  rpc SystemPing(Empty) returns (Empty) {}
+  rpc SystemStatus(Empty) returns (ServerStatus) {}
+}
+
+enum Action {
+  ADD = 1;
+  DROP = 2;
+  UPSERT = 3;
+  CLEAREXACT = 4;
+  CLEARFUZZY = 5;
+  READ = 6;
+}
+
+enum RuleAction {
+  INCLUDE = 1;
+  EXCLUDE = 2;
+  REMOVE_RULE = 99;
+}
+
+message EntityRequest {
+  optional Entity Entity = 1;
+  optional Entity Data = 2;
+}
+
+message GroupRequest {
+  optional Group Group = 1;
+  optional Group Data = 2;
+}
+
+message KVRequest {
+  optional string Target = 1;
+  optional Action Action = 2;
+  optional string Key = 3;
+  optional string Value = 4;
+}
+
+message KV2Request {
+  optional string Target = 1;
+  optional KVData Data = 2;
+}
+
+message ListOfEntities {
+  repeated Entity Entities = 1;
+}
+
+message ListOfGroups {
+  repeated Group Groups = 1;
+}
+
+message ListOfStrings {
+  repeated string Strings = 1;
+}
+
+message ListOfKVData {
+  repeated KVData KVData = 1;
+}
+
+message AuthRequest {
+  optional Entity Entity = 1;
+  optional string Secret = 2;
+  optional string Token = 98;
+}
+
+message AuthResult {
+  optional string Token = 1;
+}
+
+message SubSystemStatus {
+  optional string Name = 1;
+  optional bool OK = 2;
+  optional string FaultMessage = 3;
+}
+
+message ServerStatus {
+  optional bool SystemOK = 1;
+  optional SubSystemStatus FirstFailure = 2;
+  repeated SubSystemStatus SubSystems = 3;
+}
+
+message CapabilityRequest {
+  optional Capability Capability = 1;
+  optional bool Direct = 2;
+  optional string Target = 3;
+  optional Action Action = 4;
+}
+
+message GroupRulesRequest {
+  optional Group Group = 1;
+  optional Group Target = 2;
+  optional RuleAction RuleAction = 3;
+}
+
+// Some RPC commands return no result, instead the only return
+// information required is the status code which is returned in a
+// parallel channel via gRPC magic.  This message serves that function
+// by being explicitly empty.
+message Empty {}
+
+// A SearchRequest contains a search expression, and the standard
+// client info struct.
+message SearchRequest {
+  optional string expression = 1;
+}

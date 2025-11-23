@@ -1,0 +1,35 @@
+sudo: false
+dist: xenial
+language: go
+
+cache:
+  directories:
+  - /home/travis/gopath/pkg/linux_amd64
+  - /home/travis/gopath/pkg/mod
+
+go:
+- "1.11.4"
+
+matrix:
+  include:
+  # this build job is catch-all for "different" test conditions
+  - go: "1.x"
+    env: TEST_DB=sqlite3 TEST_DSN=":memory:" GO111MODULE=on SHUFFLE_CASES=1 PARALLEL_TESTS=2
+    script:
+    - go test ./... -race -coverprofile=coverage.txt -covermode=atomic -tags $TEST_DB -count 8 -p $PARALLEL_TESTS -ldflags '-X github.com/foxcpp/go-imap-sql.defaultPassHashAlgo=sha3-512'
+    - go test ./... -v -run 'TestBackend/User.*' -coverprofile=coverage-users.txt -covermode=atomic -tags $TEST_DB
+  - env: TEST_DB=sqlite3 TEST_DSN=":memory:" GO111MODULE=on SHUFFLE_CASES=1 PARALLEL_TESTS=2
+  - env: TEST_DB=postgres TEST_DSN="user=postgres dbname=sqlmail_test sslmode=disable" GO111MODULE=on SHUFFLE_CASES=1 PARALLEL_TESTS=1
+    services:
+    - postgresql
+    before_install:
+    - psql -c 'create database sqlmail_test;' -U postgres
+
+before_script:
+- go mod verify # ensure cache consistency
+
+script:
+- go test ./... -race -coverprofile=coverage.txt -covermode=atomic -tags $TEST_DB -count 8 -p $PARALLEL_TESTS -ldflags '-X github.com/foxcpp/go-imap-sql.defaultPassHashAlgo=sha3-512'
+
+after_success:
+- bash <(curl -s https://codecov.io/bash)

@@ -1,0 +1,219 @@
+// This is the master proto for NetAuth.  It contains the RPC
+// definitions needed to auth a user as well as to change the state of
+// a user's account.
+
+syntax = "proto2";
+option go_package = "github.com/netauth/protocol";
+
+// Capabilities permit the holder to perform special actions within
+// NetAuth.  This allows the holder to do things related to management
+// of the server without needing to use the GLOBAL_ROOT bootstrap
+// user.
+enum Capability {
+  GLOBAL_ROOT = 0;
+  CREATE_ENTITY = 10;
+  DESTROY_ENTITY = 11;
+  MODIFY_ENTITY_META = 12;
+  MODIFY_ENTITY_KEYS = 13;
+  CHANGE_ENTITY_SECRET = 14;
+  LOCK_ENTITY = 15;
+  UNLOCK_ENTITY = 16;
+  CREATE_GROUP = 20;
+  DESTROY_GROUP = 21;
+  MODIFY_GROUP_META = 22;
+  MODIFY_GROUP_MEMBERS = 23;
+}
+
+// Group expansions can either be to include children of the named
+// group, or to exclude them.
+enum ExpansionMode {
+  INCLUDE = 1;
+  EXCLUDE = 2;
+  DROP = 99;
+}
+
+// KVData holds the data for a single Key/Value dataset.  It is based
+// on holding the key which may be multi-valued, and may be an arbitrary
+// string.
+message KVData {
+  // A key needs to be representable as a string, though it is not //
+  // used for anything internally beyond a byte comparision for equality.
+  required string Key = 1;
+
+  // A key may have one or more values.  The values are completely
+  // opaque to NetAuth, but must be storeable as strings and have an
+  // implementation defined length.  By default they are not to exceed
+  // 64M.
+  repeated KVValue Values = 2;
+}
+
+// KVValue contains the actual values in the key/value system.  The
+// values are arbitrary strings, which carry with them an optional
+// ordering index.  Ordering indexes are not guaranteed to be unique.
+message KVValue {
+  required string Value = 1;
+  optional int32 Index = 2;
+}
+
+// An entity may be a person or a machine actor that wishes to act as
+// some identity.  To do so they will need to transmit an ID and a
+// secret which will be used to verify that they are who they say they
+// are.
+message Entity {
+  // The entity may be identified by a string.  This is most common
+  // for the initial authentication case where a people-entity has
+  // typed a name in and now wishes to be authenticated.
+  optional string ID = 1;
+
+  // An entity might also be identified by a unique ID number.  This
+  // case is most common when some program wishes to get information
+  // about an entity.
+  optional int32 Number = 2;
+
+  // The entity may have a secret which they will use to authenticate
+  // themselves.
+  optional string secret = 3;
+
+  // For requests that update the meta information this must be
+  // attatched to the entity itself.  This also allows the in-memory
+  // format to be defined by this proto.
+  optional EntityMeta meta = 4;
+}
+
+// The EntityMeta structure contains additional information about the
+// entity in question.  This is the "directory" part of NetAuth's
+// ecosystem and contains information you might want to know about an
+// entity.
+message EntityMeta {
+  // The primary group ID for the entity.  On most UNIX systems this
+  // will map to a group with the same string representation as the
+  // Entity, but it is not uncommon for people-entities in a network
+  // environment to not have a personal primary group and instead
+  // belong to an organization wide primary group.
+  optional string PrimaryGroup = 1;
+
+  // This is an arbitrary field used to store things like the user's
+  // real name.  It is here for consistency, but the name displayed by
+  // the user should really be stored in displayName, with the actual
+  // name stored in legalName (this facilitates a user to have an
+  // arbitrary name displayed if this is permitted by local policy).
+  optional string GECOS = 2;
+
+  // This stores the legal name (if used) that owns this security
+  // entity.  This primarily here for places where knowing the single
+  // owning entity is a requirement for compliance reasons.
+  optional string LegalName = 3;
+
+  // This field is for the display value of the legalName.  This lets
+  // the displayed value fluctuate with no connection to the actual
+  // identity of the owning entity.
+  optional string DisplayName = 4;
+
+  // Given that the entity identity and auth are provided by the
+  // network, its not unlikely that the home directory for the entity
+  // is as well.  This string contains the fully qualified path to the
+  // home directory.
+  optional string Home = 5;
+
+  // This string is the canonical 'user command interpreter' specified
+  // in the passwd file.  This value provided by this field must be
+  // safe to use on all target systems as setting this to something
+  // that doesn't exist on the targets will cause the login program to
+  // abort when setting up the environment.
+  optional string Shell = 6;
+
+  // This is for the graphical shell, primarily for when the entity is
+  // a person (though machine entities might also need to have a
+  // graphical shell set).  This provides a handy place to store it,
+  // but unfortunately a seperate mechanism is needed to get this into
+  // the systems that actually setup the graphical environment.
+  optional string GraphicalShell = 7;
+
+  // Person entities may have a physical badge which gets them access
+  // to things, and machine entities may have an asset tag which is
+  // nice to keep track of.  This is a string rather than a number
+  // because the badge "number" might actually be a UUID or something
+  // that is not otherwise a pure number.
+  optional string BadgeNumber = 8;
+
+  // An entity can be locked such that they cannot authenticate at
+  // all.  This instructs the server to refuse authentication attempts
+  // before considering the secret (if provided).
+  optional bool Locked = 9;
+
+  // Entities may be direct members of groups
+  repeated string Groups = 250;
+
+  // Entities may have capabilities that provide special actions to
+  // the holder within NetAuth.
+  repeated Capability Capabilities = 251;
+
+  // Entities may also have one or more Keys associated with them.
+  // This is deliberately untyped to allow it to be TYPE:KEY rather
+  // than needing a protocol update every time a new type of key
+  // should be stored.
+  repeated string Keys = 252;
+
+  // While NetAuth isn't a general purpose directory, it will
+  // undoubtedly be abused in that way.  To make this somewhat more
+  // palatable, a generic K/V field is included.
+  repeated string UntypedMeta = 253;
+
+  // The earlier UntypedMeta implementation had many problems.  It has
+  // been superceded by the KVData approach which permits quick sorting
+  // of values without manipulating strings, keys that have no reserved
+  // characters, and a generally cleaner interface.
+  repeated KVData KV = 254;
+}
+
+// While machine entities may belong to only one group, people
+// entities often belong to many groups at once.  This message
+// structures the reply for the additional groups.
+message Group {
+  // A group name must satisfy the requirements of the UNIX group
+  // naming conventions.  This should be one word, lower case, with no
+  // spaces and cannot begin with a number.
+  optional string Name = 1;
+
+  // Since the name has strict naming requirements, its nice to have a
+  // displayName for the group which has a more friendly display.
+  // Instead of trying to reason out what naacct means, its much nicer
+  // to just know that its "Accounting team - North America"
+  optional string DisplayName = 2;
+
+  // On *nix systems the group should also have a number.  This number
+  // should be the same across all systems since it may be used for
+  // internal matching of users.
+  optional int32 Number = 3;
+
+  // Groups can be managed by other groups.  For a group to be self
+  // managed, one would set the managed by group to be the group
+  // itself.
+  optional string ManagedBy = 5;
+
+  // Groups may have capabilities that are conferred to members of the
+  // group on a membership basis.  This is the preferred way of
+  // granting capabilities to an entity since it means that when an
+  // entity is removed from the group they lose the capabilities that
+  // were granted from it.
+  repeated Capability Capabilities = 50;
+
+  // Groups can also be members of other groups.  This allows a group
+  // to appear to contain a larger membership and build this
+  // membership based on potentially very intricate include/exclude
+  // rules.  The format of this field is "<mode>:<group>" so if you
+  // were including the membership of 'foo', then it would have the
+  // value of "INCLUDE:foo".
+  repeated string Expansions = 51;
+
+  // While NetAuth isn't a general purpose directory, it will
+  // undoubtedly be abused in that way.  To make this somewhat more
+  // palatable, a generic K/V field is included.
+  repeated string UntypedMeta = 100;
+
+  // The earlier UntypedMeta implementation had many problems.  It has
+  // been superceded by the KVData approach which permits quick sorting
+  // of values without manipulating strings, keys that have no reserved
+  // characters, and a generally cleaner interface.
+  repeated KVData KV = 254;
+}

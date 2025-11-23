@@ -1,0 +1,5 @@
+*~
+*.bak
+**/.envrc
+**/.DS_Store
+.qodo
