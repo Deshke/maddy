@@ -95,7 +95,6 @@ type NetworkActionAddSubnetRequest struct {
 	Type        string `json:"type"`
 	IPRange     string `json:"ip_range,omitempty"`
 	NetworkZone string `json:"network_zone"`
-	Gateway     string `json:"gateway"`
 	VSwitchID   int64  `json:"vswitch_id,omitempty"`
 }
 
@@ -153,4 +152,20 @@ type NetworkActionChangeProtectionRequest struct {
 // changing the resource protection of a network.
 type NetworkActionChangeProtectionResponse struct {
 	Action Action `json:"action"`
+}
+
+// NetworkMember defines the schema of a resource attached to a network.
+type NetworkMember struct {
+	Type     string   `json:"type"`
+	ID       int64    `json:"id"`
+	IP       string   `json:"ip"`
+	Status   string   `json:"status"`
+	AliasIPs []string `json:"alias_ips"`
+	Subnet   string   `json:"subnet"`
+}
+
+// NetworkMemberListResponse defines the schema of the response when
+// listing members of a network.
+type NetworkMemberListResponse struct {
+	Members []NetworkMember `json:"members"`
 }

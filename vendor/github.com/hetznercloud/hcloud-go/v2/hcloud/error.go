@@ -3,6 +3,7 @@ package hcloud
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"slices"
 	"strings"
@@ -31,7 +32,7 @@ const (
 	ErrorCodeRobotUnavailable      ErrorCode = "robot_unavailable"       // Robot was not available. The caller may retry the operation after a short delay
 	ErrorCodeResourceLocked        ErrorCode = "resource_locked"         // The resource is locked. The caller should contact support
 	ErrorCodeServerError           ErrorCode = "server_error"            // Error within the API backend
-	ErrorCodeTokenReadonly         ErrorCode = "token_readonly"          // The token is only allowed to perform GET requests
+	ErrorCodeBadGateway            ErrorCode = "bad_gateway"             // The request could not be answered by the API backend, please retry
 	ErrorCodeTimeout               ErrorCode = "timeout"                 // The request could not be answered in time, please retry
 	ErrorUnsupportedError          ErrorCode = "unsupported_error"       // The given resource does not support this
 	ErrorDeprecatedAPIEndpoint     ErrorCode = "deprecated_api_endpoint" // The request can not be answered because the API functionality was removed
@@ -78,13 +79,15 @@ const (
 	// Firewall related error codes.
 
 	ErrorCodeFirewallAlreadyApplied         ErrorCode = "firewall_already_applied"           // Firewall was already applied on resource
-	ErrorCodeFirewallAlreadyRemoved         ErrorCode = "firewall_already_removed"           // Firewall was already removed from the resource
 	ErrorCodeIncompatibleNetworkType        ErrorCode = "incompatible_network_type"          // The Network type is incompatible for the given resource
 	ErrorCodeResourceInUse                  ErrorCode = "resource_in_use"                    // Firewall must not be in use to be deleted
 	ErrorCodeServerAlreadyAdded             ErrorCode = "server_already_added"               // Server added more than one time to resource
 	ErrorCodeFirewallResourceNotFound       ErrorCode = "firewall_resource_not_found"        // Resource a firewall should be attached to / detached from not found
 	ErrorCodeFirewallManagedByLabelSelector ErrorCode = "firewall_managed_by_label_selector" // Firewall is applied via a Label Selector and cannot be removed manually
 	ErrorCodePrivateNetOnlyServer           ErrorCode = "private_net_only_server"            // The Server the Firewall should be applied to has no public interface
+	// Deprecated: This error code is not used by the API anymore.
+	// See https://docs.hetzner.cloud/changelog#2025-08-04-multiple-api-behavior-changes-for-firewalls for more details.
+	ErrorCodeFirewallAlreadyRemoved ErrorCode = "firewall_already_removed" // Firewall was already removed from the resource
 
 	// Certificate related error codes.
 
@@ -104,14 +107,24 @@ const (
 	// before Hetzner Cloud launched into the public. To make clients using the
 	// old error code still work as expected, we set the value of the old error
 	// code to that of the new error code.
+	//
+	//go:fix inline
 	ErrorCodeLimitReached = ErrorCodeRateLimitExceeded
+
+	// ErrorCodeTokenReadonly is returned if the token is only allowed to perform GET
+	// requests
+	//
+	// Deprecated: This error code is deprecated, please use [ErrorCodeForbidden] instead.
+	//
+	//go:fix inline
+	ErrorCodeTokenReadonly = ErrorCodeForbidden
 )
 
 // Error is an error returned from the API.
 type Error struct {
 	Code    ErrorCode
 	Message string
-	Details interface{}
+	Details any
 
 	response *Response
 }
@@ -130,6 +143,42 @@ func (e Error) Error() string {
 // Response returns the [Response] that contained the error if available.
 func (e Error) Response() *Response {
 	return e.response
+}
+
+// LogValue implements [slog.LogValuer] for a [Error].
+func (e Error) LogValue() slog.Value {
+	attrs := []slog.Attr{
+		slog.String("msg", e.Message),
+		slog.String("code", string(e.Code)),
+	}
+
+	if resp := e.Response(); resp != nil {
+		correlationID := resp.internalCorrelationID()
+		if correlationID != "" {
+			attrs = append(attrs,
+				slog.String("correlation-id", correlationID),
+			)
+		}
+	}
+
+	if e.Details != nil {
+		switch details := e.Details.(type) {
+		case ErrorDetailsInvalidInput:
+			attrs = append(attrs,
+				slog.String("details", fmt.Sprintf("%v", details.Fields)),
+			)
+		case ErrorDetailsDeprecatedAPIEndpoint:
+			attrs = append(attrs,
+				slog.String("details", fmt.Sprintf("%v", details)),
+			)
+		default:
+			attrs = append(attrs,
+				slog.String("details", fmt.Sprintf("%v", details)),
+			)
+		}
+	}
+
+	return slog.GroupValue(attrs...)
 }
 
 // ErrorDetailsInvalidInput contains the details of an 'invalid_input' error.
@@ -153,6 +202,15 @@ func IsError(err error, code ...ErrorCode) bool {
 	var apiErr Error
 	ok := errors.As(err, &apiErr)
 	return ok && slices.Index(code, apiErr.Code) > -1
+}
+
+// StabilizeError returns an error without any correlation ID.
+func StabilizeError(err error) error {
+	if e, ok := errors.AsType[Error](err); ok {
+		e.response = nil
+		return e
+	}
+	return err
 }
 
 type InvalidIPError struct {

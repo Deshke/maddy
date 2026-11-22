@@ -23,8 +23,8 @@ toolchain to build maddy. It is necessary to run commands below only
 if you have `go` command version older than 1.21.
 
 ```
-wget "https://go.dev/dl/go1.26.1.linux-amd64.tar.gz"
-tar xf "go1.26.1.linux-amd64.tar.gz"
+wget "https://go.dev/dl/go1.27.4.linux-amd64.tar.gz"
+tar xf "go1.27.4.linux-amd64.tar.gz"
 export GOROOT="$PWD/go"
 export PATH="$PWD/go/bin:$PATH"
 ```

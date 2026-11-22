@@ -495,19 +495,11 @@ func Xchdir(t *TLS, path uintptr) int32 {
 var localtime time.Tm
 
 // struct tm *localtime(const time_t *timep);
-func Xlocaltime(_ *TLS, timep uintptr) uintptr {
-	loc := getLocalLocation()
-	ut := *(*time.Time_t)(unsafe.Pointer(timep))
-	t := gotime.Unix(int64(ut), 0).In(loc)
-	localtime.Ftm_sec = int32(t.Second())
-	localtime.Ftm_min = int32(t.Minute())
-	localtime.Ftm_hour = int32(t.Hour())
-	localtime.Ftm_mday = int32(t.Day())
-	localtime.Ftm_mon = int32(t.Month() - 1)
-	localtime.Ftm_year = int32(t.Year() - 1900)
-	localtime.Ftm_wday = int32(t.Weekday())
-	localtime.Ftm_yday = int32(t.YearDay() - 1)
-	localtime.Ftm_isdst = Bool32(isTimeDST(t))
+func Xlocaltime(t *TLS, timep uintptr) uintptr {
+	if !localtimeTm(t, int64(*(*time.Time_t)(unsafe.Pointer(timep))), &localtime) {
+		return 0
+	}
+
 	return uintptr(unsafe.Pointer(&localtime))
 }
 
@@ -8324,3 +8316,7 @@ func ReleaseWindowsHandle(fd int32) (windows.Handle, bool) {
 	remFile(f)
 	return f.Handle, true
 }
+
+// tmSetZone would set the zone fields of tm, which this struct tm does not
+// have.
+func tmSetZone(tm *time.Tm, name string, off int) {}

@@ -108,24 +108,22 @@ func (o *Zone) idOrName() (string, error) {
 	}
 }
 
+func (o *Zone) pathID() (string, error) {
+	return o.idOrName()
+}
+
 // ZoneClient is a client for the Zone (DNS) API.
 //
 // See https://docs.hetzner.cloud/reference/cloud#zones and
 // https://docs.hetzner.cloud/reference/cloud#zone-rrsets.
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 type ZoneClient struct {
 	client *Client
-	Action *ResourceActionClient
+	Action *ResourceActionClient[*Zone]
 }
 
 // GetByID returns a single [Zone].
 //
 // See https://docs.hetzner.cloud/reference/cloud#zones-get-a-zone
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) GetByID(ctx context.Context, id int64) (*Zone, *Response, error) {
 	return c.getByIDOrName(ctx, strconv.FormatInt(id, 10))
 }
@@ -133,9 +131,6 @@ func (c *ZoneClient) GetByID(ctx context.Context, id int64) (*Zone, *Response, e
 // GetByName returns a single [Zone].
 //
 // See https://docs.hetzner.cloud/reference/cloud#zones-get-a-zone
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) GetByName(ctx context.Context, name string) (*Zone, *Response, error) {
 	return c.getByIDOrName(ctx, name)
 }
@@ -143,9 +138,6 @@ func (c *ZoneClient) GetByName(ctx context.Context, name string) (*Zone, *Respon
 // Get returns a single [Zone].
 //
 // See https://docs.hetzner.cloud/reference/cloud#zones-get-a-zone
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) Get(ctx context.Context, idOrName string) (*Zone, *Response, error) {
 	return c.getByIDOrName(ctx, idOrName)
 }
@@ -174,7 +166,7 @@ type ZoneListOpts struct {
 	Sort []string
 }
 
-func (l ZoneListOpts) values() url.Values {
+func (l ZoneListOpts) Values() url.Values {
 	result := l.ListOpts.Values()
 	if l.Name != "" {
 		result.Add("name", l.Name)
@@ -191,14 +183,11 @@ func (l ZoneListOpts) values() url.Values {
 // List returns a list of [Zone] for a specific page.
 //
 // See https://docs.hetzner.cloud/reference/cloud#zones-list-zones
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) List(ctx context.Context, opts ZoneListOpts) ([]*Zone, *Response, error) {
 	const opPath = "/zones?%s"
 	ctx = ctxutil.SetOpPath(ctx, opPath)
 
-	reqPath := fmt.Sprintf(opPath, opts.values().Encode())
+	reqPath := fmt.Sprintf(opPath, opts.Values().Encode())
 
 	respBody, resp, err := getRequest[schema.ZoneListResponse](ctx, c.client, reqPath)
 	if err != nil {
@@ -211,20 +200,17 @@ func (c *ZoneClient) List(ctx context.Context, opts ZoneListOpts) ([]*Zone, *Res
 // All returns a list of all [Zone].
 //
 // See https://docs.hetzner.cloud/reference/cloud#zones-list-zones
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) All(ctx context.Context) ([]*Zone, error) {
-	return c.AllWithOpts(ctx, ZoneListOpts{ListOpts: ListOpts{PerPage: 50}})
+	return c.AllWithOpts(ctx, ZoneListOpts{})
 }
 
 // AllWithOpts returns a list of all [Zone] with the given options.
 //
 // See https://docs.hetzner.cloud/reference/cloud#zones-list-zones
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) AllWithOpts(ctx context.Context, opts ZoneListOpts) ([]*Zone, error) {
+	if opts.ListOpts.PerPage == 0 {
+		opts.ListOpts.PerPage = 50
+	}
 	return iterPages(func(page int) ([]*Zone, *Response, error) {
 		opts.Page = page
 		return c.List(ctx, opts)
@@ -271,9 +257,6 @@ type ZoneCreateResult struct {
 // Create creates a new [Zone] from the given options.
 //
 // See https://docs.hetzner.cloud/reference/cloud#zones-create-a-zone
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) Create(ctx context.Context, opts ZoneCreateOpts) (ZoneCreateResult, *Response, error) {
 	const opPath = "/zones"
 	ctx = ctxutil.SetOpPath(ctx, opPath)
@@ -303,9 +286,6 @@ type ZoneUpdateOpts struct {
 // Update updates a [Zone] with the given options.
 //
 // See https://docs.hetzner.cloud/reference/cloud#zones-update-a-zone
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) Update(ctx context.Context, zone *Zone, opts ZoneUpdateOpts) (*Zone, *Response, error) {
 	const opPath = "/zones/%s"
 	ctx = ctxutil.SetOpPath(ctx, opPath)
@@ -335,9 +315,6 @@ type ZoneDeleteResult struct {
 // Delete deletes a [Zone].
 //
 // See https://docs.hetzner.cloud/reference/cloud#zones-delete-a-zone
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) Delete(ctx context.Context, zone *Zone) (ZoneDeleteResult, *Response, error) {
 	const opPath = "/zones/%s"
 	ctx = ctxutil.SetOpPath(ctx, opPath)
@@ -369,9 +346,6 @@ type ZoneExportZonefileResult struct {
 // ExportZonefile returns a generated [Zone] file in BIND (RFC 1034/1035) format.
 //
 // See https://docs.hetzner.cloud/reference/cloud#zones-export-a-zone-file
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) ExportZonefile(ctx context.Context, zone *Zone) (ZoneExportZonefileResult, *Response, error) {
 	const opPath = "/zones/%s/zonefile"
 	ctx = ctxutil.SetOpPath(ctx, opPath)
@@ -403,9 +377,6 @@ type ZoneImportZonefileOpts struct {
 // ImportZonefile imports a zone file, replacing all resource record sets (RRSets).
 //
 // See https://docs.hetzner.cloud/reference/cloud#zone-actions-import-a-zone-file
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) ImportZonefile(ctx context.Context, zone *Zone, opts ZoneImportZonefileOpts) (*Action, *Response, error) {
 	const opPath = "/zones/%s/actions/import_zonefile"
 	ctx = ctxutil.SetOpPath(ctx, opPath)
@@ -435,9 +406,6 @@ type ZoneChangeProtectionOpts struct {
 // ChangeProtection changes the protection of a [Zone].
 //
 // See https://docs.hetzner.cloud/reference/cloud#zone-actions-change-a-zones-protection
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) ChangeProtection(ctx context.Context, zone *Zone, opts ZoneChangeProtectionOpts) (*Action, *Response, error) {
 	const opPath = "/zones/%s/actions/change_protection"
 	ctx = ctxutil.SetOpPath(ctx, opPath)
@@ -467,9 +435,6 @@ type ZoneChangeTTLOpts struct {
 // ChangeTTL changes the TTL of a [Zone].
 //
 // See https://docs.hetzner.cloud/reference/cloud#zone-actions-change-a-zones-default-ttl
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) ChangeTTL(ctx context.Context, zone *Zone, opts ZoneChangeTTLOpts) (*Action, *Response, error) {
 	const opPath = "/zones/%s/actions/change_ttl"
 	ctx = ctxutil.SetOpPath(ctx, opPath)
@@ -509,9 +474,6 @@ type ZoneChangePrimaryNameserversOptsPrimaryNameserver struct {
 // ChangePrimaryNameservers changes the primary nameservers of a [Zone].
 //
 // See https://docs.hetzner.cloud/reference/cloud#zone-actions-change-a-zones-primary-nameservers
-//
-// Experimental: DNS API is in beta, breaking changes may occur within minor releases.
-// See https://docs.hetzner.cloud/changelog#2025-10-07-dns-beta
 func (c *ZoneClient) ChangePrimaryNameservers(ctx context.Context, zone *Zone, opts ZoneChangePrimaryNameserversOpts) (*Action, *Response, error) {
 	const opPath = "/zones/%s/actions/change_primary_nameservers"
 	ctx = ctxutil.SetOpPath(ctx, opPath)

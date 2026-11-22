@@ -1,7 +1,54 @@
 # Change Log
+## [3.25.0](https://github.com/vultr/govultr/compare/v3.24.0...v3.25.0) (2025-11-21)
+### Enhancement
+* Bare Metal Server: Add vpc_only field [PR 404](https://github.com/vultr/govultr/pull/404)
+* Instance: Add vpc_only field [PR 404](https://github.com/vultr/govultr/pull/404)
+* Container Registry: Add support for artifact, robot, replication and retention endpoints [PR 406](https://github.com/vultr/govultr/pull/406)
+
+### New Contributors
+* @nathangoulding made their first contribution in [PR 404](https://github.com/vultr/govultr/pull/404)
+
+## [3.24.0](https://github.com/vultr/govultr/compare/v3.23.0...v3.24.0) (2025-09-19)
+### Enhancements
+* Logs: Added to library [PR 399](https://github.com/vultr/govultr/pull/399)
+
+### Automation
+* Migrate golangci-lint config to v2 [PR 398](https://github.com/vultr/govultr/pull/398)
+
+## [3.23.0](https://github.com/vultr/govultr/compare/v3.22.1...v3.23.0) (2025-08-27)
+### Enhancements
+* Bare Metal Server: Add snapshot ID field [PR 396](https://github.com/vultr/govultr/pull/396)
+* Instance: Add snapshot ID field [PR 396](https://github.com/vultr/govultr/pull/396)
+* Database: Add CA certificate field [PR 396](https://github.com/vultr/govultr/pull/396)
+
+## [3.22.1](https://github.com/vultr/govultr/compare/v3.22.0...v3.22.1) (2025-08-11)
+### Enhancements
+* Snapshots: Add support for CreateFromURL UEFI field [PR 390](https://github.com/vultr/govultr/pull/390)
+
+### New Contributors
+* @mmonaco made their first contribution in [PR 390](https://github.com/vultr/govultr/pull/390)
+
+## [3.22.0](https://github.com/vultr/govultr/compare/v3.21.1...v3.22.0) (2025-08-11)
+### Enhancements
+* Kubernetes: Add node pool user_data to create/update structs [PR 391](https://github.com/vultr/govultr/pull/391)
+
+## [3.21.1](https://github.com/vultr/govultr/compare/v3.21.0...v3.21.1) (2025-07-16
+### Bug Fixes
+* Load Balancer: Add missing auto SSL domain field [PR 388](https://github.com/vultr/govultr/pull/388)
+
+## [3.21.0](https://github.com/vultr/govultr/compare/v3.20.0...v3.21.0) (2025-06-20)
+### Enhancements
+* Database: Add Kafka additional features [PR 386](https://github.com/vultr/govultr/pull/386)
+
+### Dependencies
+* Bump github.com/hashicorp/go-retryablehttp from 0.7.7 to 0.7.8 [PR 385](https://github.com/vultr/govultr/pull/385)
+
+### Automation
+* Update goreleaser to lock to v2 [PR 384](https://github.com/vultr/govultr/pull/384)
+
 ## [3.20.0](https://github.com/vultr/govultr/compare/v3.19.1...v3.20.0) (2025-05-06)
 ### Enhancements
-* Database: Support Managed Database backup schedule [PR 382](https://github.com/vultr/govultr/pull/382)
+* Database: Add backup schedule [PR 382](https://github.com/vultr/govultr/pull/382)
 
 ## [3.19.1](https://github.com/vultr/govultr/compare/v3.19.0...v3.19.1) (2025-04-08)
 ### Bug Fixes

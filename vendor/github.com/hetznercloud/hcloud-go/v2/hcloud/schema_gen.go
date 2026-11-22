@@ -9,8 +9,6 @@ import (
 	"github.com/hetznercloud/hcloud-go/v2/hcloud/schema"
 )
 
-//go:generate go run github.com/jmattheis/goverter/cmd/goverter gen ./...
-
 /*
 This file generates conversions methods between the schema and the hcloud package.
 Goverter (https://github.com/jmattheis/goverter) is used to generate these conversion
@@ -25,7 +23,7 @@ You can find a documentation of goverter here: https://goverter.jmattheis.de/
 //
 // Specify where and in which package to output the generated
 // conversion methods.
-// goverter:output:file zz_schema.go
+// goverter:output:file zz_schema_converter.go
 // goverter:output:package github.com/hetznercloud/hcloud-go/v2/hcloud
 //
 // In case of *T -> T conversion, use zero value if *T is nil.
@@ -60,6 +58,9 @@ You can find a documentation of goverter here: https://goverter.jmattheis.de/
 // goverter:extend int64FromZone
 // goverter:extend floatingIPFromInt64
 // goverter:extend int64FromFloatingIP
+// goverter:extend int64FromPrimaryIP
+// goverter:extend storageBoxFromInt64
+// goverter:extend int64FromStorageBox
 // goverter:extend mapFromFloatingIPDNSPtrSchema
 // goverter:extend floatingIPDNSPtrSchemaFromMap
 // goverter:extend mapFromPrimaryIPDNSPtrSchema
@@ -82,6 +83,10 @@ You can find a documentation of goverter here: https://goverter.jmattheis.de/
 // goverter:extend int64SlicePtrFromCertificatePtrSlice
 // goverter:extend stringSlicePtrFromStringSlice
 // goverter:extend locationFromServerTypeLocationSchema
+// goverter:extend schemaPtrFromDatacenterServerTypes
+// goverter:extend deprecatedStrFromDeprecationSchema
+// goverter:extend deprecatedTimeFromDeprecationSchema
+// goverter:extend deprecatedTimePtrSchemaFromDeprecation
 type converter interface {
 
 	// goverter:map Error.Code ErrorCode
@@ -134,6 +139,8 @@ type converter interface {
 
 	SchemaFromDatacenter(*Datacenter) schema.Datacenter
 
+	schemaFromDatacenterServerTypes(DatacenterServerTypes) schema.DatacenterServerTypes
+
 	ServerFromSchema(schema.Server) *Server
 
 	// goverter:map OutgoingTraffic | mapZeroUint64ToNil
@@ -178,10 +185,14 @@ type converter interface {
 
 	ImageFromSchema(schema.Image) *Image
 
+	// goverter:map DeprecatableResource.Deprecation Deprecated | deprecatedTimeFromDeprecationSchema
+	intImageFromSchema(schema.Image) Image
+
 	SchemaFromImage(*Image) schema.Image
 
 	// Needed because of how goverter works internally, see https://github.com/jmattheis/goverter/issues/114
 	// goverter:map ImageSize | mapZeroFloat32ToNil
+	// goverter:map DeprecatableResource.Deprecation Deprecated | deprecatedTimePtrSchemaFromDeprecation
 	intSchemaFromImage(Image) schema.Image
 
 	// goverter:ignore Currency
@@ -208,6 +219,10 @@ type converter interface {
 
 	SchemaFromNetworkRoute(NetworkRoute) schema.NetworkRoute
 
+	NetworkMemberFromSchema(schema.NetworkMember) *NetworkMember
+
+	SchemaFromNetworkMember(*NetworkMember) schema.NetworkMember
+
 	LoadBalancerFromSchema(schema.LoadBalancer) *LoadBalancer
 
 	// goverter:map OutgoingTraffic | mapZeroUint64ToNil
@@ -215,6 +230,7 @@ type converter interface {
 	SchemaFromLoadBalancer(*LoadBalancer) schema.LoadBalancer
 
 	// goverter:map Prices Pricings
+	// goverter:map DeprecatableResource.Deprecation Deprecated | deprecatedStrFromDeprecationSchema
 	LoadBalancerTypeFromSchema(schema.LoadBalancerType) *LoadBalancerType
 
 	// goverter:map Pricings Prices
@@ -281,7 +297,7 @@ type converter interface {
 	// goverter:map PriceHourly Hourly
 	// goverter:map PriceMonthly Monthly
 	// goverter:map PricePerTBTraffic PerTBTraffic
-	serverTypePricingFromSchema(schema.PricingServerTypePrice) ServerTypeLocationPricing
+	serverTypeLocationPricingFromSchema(schema.PricingServerTypePrice) ServerTypeLocationPricing
 
 	// goverter:map Image.PerGBMonth.Currency Currency
 	// goverter:map Image.PerGBMonth.VATRate VATRate
@@ -386,7 +402,47 @@ type converter interface {
 
 	SchemaFromZoneRRSetSetRecordsOpts(ZoneRRSetSetRecordsOpts) schema.ZoneRRSetSetRecordsRequest
 	SchemaFromZoneRRSetAddRecordsOpts(ZoneRRSetAddRecordsOpts) schema.ZoneRRSetAddRecordsRequest
+	SchemaFromZoneRRSetUpdateRecordsOpts(ZoneRRSetUpdateRecordsOpts) schema.ZoneRRSetUpdateRecordsRequest
 	SchemaFromZoneRRSetRemoveRecordsOpts(ZoneRRSetRemoveRecordsOpts) schema.ZoneRRSetRemoveRecordsRequest
+
+	// StorageBoxType
+	// goverter:map Pricings Prices
+	SchemaFromStorageBoxType(*StorageBoxType) schema.StorageBoxType
+	// goverter:map Prices Pricings
+	StorageBoxTypeFromSchema(schema.StorageBoxType) *StorageBoxType
+
+	// StorageBox
+	StorageBoxFromSchema(schema.StorageBox) *StorageBox
+	// goverter:map DayOfWeek | mapStorageBoxIntPtrToWeekdayPtr
+	StorageBoxSnapshotPlanFromSchema(schema.StorageBoxSnapshotPlan) StorageBoxSnapshotPlan
+	SchemaFromStorageBox(*StorageBox) schema.StorageBox
+	// goverter:map SSHKeys | mapSSHKeyPtrSliceToPublicKeySlice
+	SchemaFromStorageBoxCreateOpts(StorageBoxCreateOpts) schema.StorageBoxCreateRequest
+	SchemaFromStorageBoxUpdateOpts(StorageBoxUpdateOpts) schema.StorageBoxUpdateRequest
+	SchemaFromStorageBoxChangeProtectionOpts(StorageBoxChangeProtectionOpts) schema.StorageBoxChangeProtectionRequest
+	SchemaFromStorageBoxChangeTypeOpts(StorageBoxChangeTypeOpts) schema.StorageBoxChangeTypeRequest
+	SchemaFromStorageBoxResetPasswordOpts(StorageBoxResetPasswordOpts) schema.StorageBoxResetPasswordRequest
+	SchemaFromStorageBoxUpdateAccessSettingsOpts(StorageBoxUpdateAccessSettingsOpts) schema.StorageBoxUpdateAccessSettingsRequest
+	SchemaFromStorageBoxRollbackSnapshotOpts(StorageBoxRollbackSnapshotOpts) schema.StorageBoxRollbackSnapshotRequest
+	// goverter:map DayOfWeek | mapStorageBoxWeekdayPtrToIntPtr
+	SchemaFromStorageBoxEnableSnapshotPlanOpts(StorageBoxEnableSnapshotPlanOpts) schema.StorageBoxEnableSnapshotPlanRequest
+
+	// StorageBoxSnapshot
+	StorageBoxSnapshotFromSchema(schema.StorageBoxSnapshot) *StorageBoxSnapshot
+	SchemaFromStorageBoxSnapshot(*StorageBoxSnapshot) schema.StorageBoxSnapshot
+	SchemaFromStorageBoxSnapshotCreateOpts(StorageBoxSnapshotCreateOpts) schema.StorageBoxSnapshotCreateRequest
+	SchemaFromStorageBoxSnapshotUpdateOpts(StorageBoxSnapshotUpdateOpts) schema.StorageBoxSnapshotUpdateRequest
+
+	// StorageBoxSubaccount
+	StorageBoxSubaccountFromSchema(schema.StorageBoxSubaccount) *StorageBoxSubaccount
+	SchemaFromStorageBoxSubaccount(*StorageBoxSubaccount) schema.StorageBoxSubaccount
+	SchemaFromStorageBoxSubaccountCreateOpts(StorageBoxSubaccountCreateOpts) schema.StorageBoxSubaccountCreateRequest
+	SchemaFromStorageBoxSubaccountUpdateOpts(StorageBoxSubaccountUpdateOpts) schema.StorageBoxSubaccountUpdateRequest
+	// goverter:ignoreMissing
+	StorageBoxSubaccountFromCreateResponse(schema.StorageBoxSubaccountCreateResponseSubaccount) *StorageBoxSubaccount
+	SchemaFromStorageBoxSubaccountResetPasswordOpts(StorageBoxSubaccountResetPasswordOpts) schema.StorageBoxSubaccountResetPasswordRequest
+	SchemaFromStorageBoxSubaccountUpdateAccessSettingsOpts(StorageBoxSubaccountUpdateAccessSettingsOpts) schema.StorageBoxSubaccountUpdateAccessSettingsRequest
+	SchemaFromStorageBoxSubaccountChangeHomeDirectoryOpts(StorageBoxSubaccountChangeHomeDirectoryOpts) schema.StorageBoxSubaccountChangeHomeDirectoryRequest
 }
 
 func schemaActionErrorFromAction(a Action) *schema.ActionError {
@@ -589,6 +645,24 @@ func int64FromFloatingIP(f *FloatingIP) int64 {
 	return f.ID
 }
 
+func int64FromPrimaryIP(f *PrimaryIP) int64 {
+	if f == nil {
+		return 0
+	}
+	return f.ID
+}
+
+func storageBoxFromInt64(id int64) *StorageBox {
+	return &StorageBox{ID: id}
+}
+
+func int64FromStorageBox(sb *StorageBox) int64 {
+	if sb == nil {
+		return 0
+	}
+	return sb.ID
+}
+
 func firewallStatusFromSchemaServerFirewall(fw schema.ServerFirewall) *ServerFirewallStatus {
 	return &ServerFirewallStatus{
 		Firewall: Firewall{ID: fw.ID},
@@ -660,7 +734,7 @@ func intSecondsFromDuration(d time.Duration) int {
 	return int(d.Seconds())
 }
 
-func errorDetailsFromSchema(d interface{}) interface{} {
+func errorDetailsFromSchema(d any) any {
 	switch typed := d.(type) {
 	case schema.ErrorDetailsInvalidInput:
 		details := ErrorDetailsInvalidInput{
@@ -682,7 +756,7 @@ func errorDetailsFromSchema(d interface{}) interface{} {
 	return nil
 }
 
-func schemaFromErrorDetails(d interface{}) interface{} {
+func schemaFromErrorDetails(d any) any {
 	switch typed := d.(type) {
 	case ErrorDetailsInvalidInput:
 		details := schema.ErrorDetailsInvalidInput{
@@ -876,7 +950,7 @@ func serverMetricsTimeSeriesFromSchema(s schema.ServerTimeSeriesVals) ([]ServerM
 	for i, rawVal := range s.Values {
 		var val ServerMetricsValue
 
-		tup, ok := rawVal.([]interface{})
+		tup, ok := rawVal.([]any)
 		if !ok {
 			return nil, fmt.Errorf("failed to convert value to tuple: %v", rawVal)
 		}
@@ -906,7 +980,7 @@ func loadBalancerMetricsTimeSeriesFromSchema(s schema.LoadBalancerTimeSeriesVals
 	for i, rawVal := range s.Values {
 		var val LoadBalancerMetricsValue
 
-		tup, ok := rawVal.([]interface{})
+		tup, ok := rawVal.([]any)
 		if !ok {
 			return nil, fmt.Errorf("failed to convert value to tuple: %v", rawVal)
 		}
@@ -987,7 +1061,7 @@ func stringMapToStringMapPtr(m map[string]string) *map[string]string {
 	return &m
 }
 
-func rawSchemaFromErrorDetails(v interface{}) json.RawMessage {
+func rawSchemaFromErrorDetails(v any) json.RawMessage {
 	d := schemaFromErrorDetails(v)
 	if v == nil {
 		return nil
@@ -1008,6 +1082,28 @@ func mapZeroFloat32ToNil(f float32) *float32 {
 
 func isDeprecationNotNil(d *DeprecationInfo) bool {
 	return d != nil
+}
+
+func deprecatedTimePtrSchemaFromDeprecation(d *DeprecationInfo) *time.Time {
+	if d != nil {
+		return &d.Announced
+	}
+	return nil
+}
+
+func deprecatedStrFromDeprecationSchema(d *schema.DeprecationInfo) *string {
+	if d != nil {
+		value := d.Announced.Format(time.RFC3339)
+		return &value
+	}
+	return nil
+}
+
+func deprecatedTimeFromDeprecationSchema(d *schema.DeprecationInfo) time.Time {
+	if d != nil {
+		return d.Announced
+	}
+	return time.Time{}
 }
 
 // int64SlicePtrFromCertificatePtrSlice is needed so that a nil slice is mapped to nil instead of &nil.
@@ -1034,4 +1130,49 @@ func locationFromServerTypeLocationSchema(serverTypeLocation schema.ServerTypeLo
 		ID:   serverTypeLocation.ID,
 		Name: serverTypeLocation.Name,
 	}
+}
+
+func mapSSHKeyPtrSliceToPublicKeySlice(s []*SSHKey) []string {
+	publicKeys := make([]string, 0, len(s))
+	for _, key := range s {
+		if key == nil {
+			continue
+		}
+		publicKeys = append(publicKeys, key.PublicKey)
+	}
+
+	return publicKeys
+}
+
+func mapStorageBoxWeekdayPtrToIntPtr(w *time.Weekday) *int {
+	if w == nil {
+		return nil
+	}
+
+	if *w == time.Sunday {
+		return new(7)
+	}
+
+	return new(int(*w))
+}
+
+func mapStorageBoxIntPtrToWeekdayPtr(i *int) *time.Weekday {
+	if i == nil {
+		return nil
+	}
+
+	if *i == 7 {
+		return new(time.Sunday)
+	}
+
+	return new(time.Weekday(*i))
+}
+
+// hcloud.DatacenterServerTypes is not nullable but *schema.DatacenterServerTypes is.
+// We treat the zero value as nil.
+func schemaPtrFromDatacenterServerTypes(dst DatacenterServerTypes) *schema.DatacenterServerTypes {
+	if dst.Available == nil && dst.AvailableForMigration == nil && dst.Supported == nil {
+		return nil
+	}
+	return new(schemaFromDatacenterServerTypes(dst))
 }
